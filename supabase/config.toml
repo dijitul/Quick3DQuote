@@ -1,0 +1,116 @@
+# Supabase CLI configuration for Quick3DQuote
+#
+# Docs: https://supabase.com/docs/guides/local-development/cli/config
+# Run `supabase start` from the repo root after editing.
+
+# A project_id uniquely identifies this project in `.supabase/` metadata and
+# distinguishes local containers from any other Supabase projects on the
+# developer's machine.
+project_id = "quick3dquote"
+
+[api]
+# PostgREST port. The Next.js dashboard and embed API talk to it.
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+# A high limit is safe locally; production Supabase plans cap this separately.
+max_rows = 1000
+
+[api.tls]
+enabled = false
+
+[db]
+# Direct Postgres port. Used by psql and the pgTAP test runner.
+port = 54322
+shadow_port = 54320
+# Pin to Postgres 15 — matches Supabase cloud default and our schema targets
+# PG15 features (security_invoker on views, partial indexes on JSONB, etc).
+major_version = 15
+
+[db.pooler]
+# Supavisor pooler. Use port 6543 for transaction mode from serverless
+# Next.js / Fly.io. Keep disabled locally to save resources; enable it when
+# writing tests that exercise connection-pool behaviour.
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+
+[studio]
+# Supabase Studio (Postgres GUI) runs on this port.
+enabled = true
+port = 54323
+# Public API URL that Studio embeds in its generated code snippets.
+api_url = "http://127.0.0.1:54321"
+openai_api_key = "env(OPENAI_API_KEY)"
+
+[inbucket]
+# Local email server for magic-link / password reset testing.
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+# Matches the 100MB mesh cap referenced elsewhere in the design; logos are
+# much smaller (we enforce 2MB in the bucket RLS), but this is the service-
+# wide ceiling, not a per-bucket one.
+file_size_limit = "100MiB"
+
+[storage.image_transformation]
+enabled = true
+
+[auth]
+enabled = true
+# Local dev site — the Next.js dashboard runs on :3000.
+site_url = "http://127.0.0.1:3000"
+# Redirect URLs Supabase Auth is allowed to redirect to after email confirm /
+# OAuth callback. Additions for preview deployments go in Vercel env, not here.
+additional_redirect_urls = [
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3001",        # embed app during local dev
+    "http://localhost:3001",
+]
+jwt_expiry = 3600               # 1h access token per security.md §8.
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+# Enforces our baseline pwd policy. The pwned-password check is a cloud-side
+# feature; locally we rely on the minimum length to keep dev fast.
+minimum_password_length = 10
+
+[auth.email]
+# Email confirmation on — matches security.md §8 "Email confirmation required".
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+# Magic-link sign-in is left on in dev so `supabase start` testers can log in
+# without running the SMTP flow; switch off in production via dashboard.
+secure_password_change = false
+
+[auth.external.google]
+# Google OAuth provider. Client ID and secret come from env vars so the
+# config file stays safe to commit. Set them in `.env.local`:
+#   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=...
+#   SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=...
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# security.md §8: require verified email from Google before accepting login.
+skip_nonce_check = false
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083
+
+[analytics]
+enabled = false

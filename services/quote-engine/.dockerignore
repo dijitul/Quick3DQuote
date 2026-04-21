@@ -1,0 +1,46 @@
+# VCS
+.git
+.gitignore
+
+# Python build artefacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+build
+dist
+
+# Test / dev artefacts
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.venv
+venv
+env
+
+# Editors
+.vscode
+.idea
+*.swp
+
+# Local env
+.env
+.env.*
+!.env.example
+
+# Fixtures that aren't needed at runtime
+tests
+scripts
+Makefile
+README.md
+docs
+
+# Dev-only deps file
+requirements-dev.txt
+
+# Fly metadata — copied by flyctl, not by Docker
+fly.toml

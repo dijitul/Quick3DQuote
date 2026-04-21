@@ -1,0 +1,21 @@
+# Frozen runtime dependencies for Docker build.
+# Regenerate: `pip install -e . && pip freeze > requirements.txt`, then prune dev-only.
+# Keep in lockstep with pyproject.toml [project.dependencies].
+
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+trimesh==4.5.2
+numpy==2.1.3
+pydantic==2.9.2
+pydantic-settings==2.6.1
+boto3==1.35.60
+httpx==0.27.2
+python-multipart==0.0.17
+structlog==24.4.0
+sentry-sdk[fastapi]==2.17.0
+
+# Transitive pins we care about (size / security)
+anyio==4.6.2
+certifi==2024.8.30
+botocore==1.35.60
+starlette==0.41.2

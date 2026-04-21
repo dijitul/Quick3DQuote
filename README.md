@@ -6,19 +6,40 @@ Competitor: [RapidQuote3D](https://rapidquote3d.com/) at £300/mo. We target £5
 
 ## Status
 
-**Phase 1 — Design.** See [`CLAUDE.md`](./CLAUDE.md) for the live project status and [`docs/`](./docs/) for the design documents.
+**Phase 2 — Scaffold complete.** See [`CLAUDE.md`](./CLAUDE.md) §7 for live status and [`docs/`](./docs/) for the full design documents.
 
-## Repo layout (once scaffolded)
+## Repo layout
 
 ```
 apps/
-  web/              # Next.js — marketing site, shop dashboard, embed host
+  web/              # Next.js 15 — marketing + shop dashboard (port 3000)
+  embed/            # Next.js 15 — embeddable widget (port 3001, deploys to embed.quick3dquote.com)
 services/
-  quote-engine/     # Python FastAPI — mesh analysis + pricing
-packages/
-  pricing/          # Shared TS pricing logic
-  ui/               # Shared UI components
-docs/               # Design docs (architecture, security, schema, ux, etc.)
+  quote-engine/     # FastAPI + trimesh — mesh analysis + pricing (Fly.io)
+supabase/
+  migrations/       # DDL, RLS policies, triggers, storage buckets
+  tests/rls/        # pgTAP-style tenant-isolation tests
+docs/               # Design docs — 8 specialist docs covering every concern
+.github/workflows/  # CI: lint/test/build for JS + Python + SQL syntax
+```
+
+## Quick start (once toolchain is installed)
+
+```bash
+# 1. Install Node 20+, pnpm 9+, Python 3.11+, and the Supabase CLI.
+# 2. Copy env files.
+cp .env.example .env.local
+# 3. Install JS deps.
+pnpm install
+# 4. Install Python deps for the engine.
+cd services/quote-engine && pip install -r requirements.txt -r requirements-dev.txt && cd -
+# 5. Boot local Supabase (auth, db, storage).
+supabase start
+# 6. Apply migrations + seed.
+pnpm run db:reset
+# 7. Run everything in parallel.
+pnpm dev           # web:3000, embed:3001 (engine is started separately)
+pnpm dev:engine    # in another terminal
 ```
 
 ## Prerequisites (for when we start building)

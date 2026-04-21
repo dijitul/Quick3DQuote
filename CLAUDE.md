@@ -137,12 +137,31 @@ These are close to real-world averages; shops will tune them. This is the same c
 | Phase | State | Owner |
 |---|---|---|
 | 1. Design docs (architecture, schema, UX, security, devops) | **✅ COMPLETE** (2026-04-21) | specialist agents |
-| 2. Repo scaffold (workspaces, Next.js, FastAPI skeleton) | **NEXT** | |
-| 3. Pricing engine (Python + unit tests) | pending | |
-| 4. Widget MVP (upload → preview → price) | pending | |
-| 5. Dashboard MVP (auth, materials CRUD, quotes inbox) | pending | |
-| 6. Stripe integration (shop subs + customer checkout) | pending | |
-| 7. Alpha with 1 friendly shop | pending | |
+| 2. Repo scaffold (workspaces, Next.js apps, FastAPI skeleton, Supabase migrations) | **✅ COMPLETE** (2026-04-21) | specialist agents |
+| 3. Pricing engine (Python + unit tests) | **✅ DONE** — tests in `services/quote-engine/tests/test_pricing.py`, Decimal arithmetic, >95% coverage target | |
+| 4. Install toolchain locally (Node 20+, pnpm 9+, Python 3.11+), `pnpm install`, boot both apps | **NEXT — for Olly** | |
+| 5. Wire real Supabase project + R2 bucket + Stripe keys (dev) | pending | |
+| 6. Widget MVP end-to-end smoke test (upload → preview → price) | pending | |
+| 7. Dashboard MVP smoke test (auth, materials CRUD, quotes inbox) | pending | |
+| 8. Stripe Connect OAuth + customer Checkout integration test | pending | |
+| 9. Deploy to Vercel (web + embed) + Fly.io (engine), point DNS | pending | |
+| 10. Alpha with 1 friendly shop | pending | |
+
+### Phase 2 scaffold — what's on disk
+
+- **`apps/web/`** — 78 files. Next.js 15 (App Router), marketing landing, auth flows, full dashboard shell (sidebar + topbar), all 8 dashboard pages (dashboard/quotes/materials/processes/branding/embed/billing/settings), all shop-side API routes with Zod validation, Stripe subscription + Customer Portal + Connect OAuth, webhook handler with signature verification, shadcn primitives hand-written, Indigo token system in `tailwind.config.ts`.
+- **`apps/embed/`** — 40 files. Next.js 15, widget surface with reducer state machine, react-three-fiber mesh viewer (STL/OBJ via three-stdlib), react-dropzone upload with XHR progress, presigned R2 PUT, live price panel, checkout CTA, all embed API routes, `/embed.js` loader served as dynamic route (hand-rolled ES5 for max host-browser compatibility), postMessage resize bridge.
+- **`services/quote-engine/`** — 30 files. FastAPI + trimesh, pure Decimal pricing, mesh analysis with size/triangle/3MF-zip-bomb guards, HMAC constant-time shared-secret auth, structlog JSON, Dockerfile (python:3.11-slim + tini), fly.toml (LHR, 1GB, always-warm), pytest suite (pricing >95%, overall >85% target).
+- **`supabase/`** — 4 migrations + seed + RLS pgTAP tests. Core schema, RLS policies (request-scoped GUC pattern for anon embed access), SECURITY DEFINER helpers (`is_valid_embed_key`, `create_quote_from_widget`), storage bucket for logos, seed with a demo shop.
+- **`.github/workflows/ci.yml`** — lint/typecheck/test/build for JS, ruff/mypy/pytest for Python, SQL syntax check by applying migrations against a throwaway Postgres.
+- **`packages/`** — deliberately empty for now. Per decision §11.2 the two Next apps are separate-origin; duplicating the small UI primitives across them is clearer than a shared package at this stage. Revisit if the duplication grows.
+
+### Known gaps / follow-ups documented by the specialist agents
+
+- **Quote-engine**: HMAC-over-body signature and mesh SHA-256 TOCTOU verification deferred (architecture.md §5.2 calls for them; shared-secret is enough for MVP). `/metrics` Prometheus endpoint not yet wired. Subprocess `RLIMIT_AS` isolation deferred — timeout + triangle cap cover the realistic case.
+- **Supabase**: a `shop_public` view was swapped for an RPC `shop_public_by_embed_key()` for stricter RLS interface. `api_rate_limits` table omitted in favour of Upstash Redis (per the schema doc's own recommendation).
+- **Web/embed**: component styles not yet extracted to a shared `packages/ui` — deliberate per above.
+- **Stripe**: Connect OAuth endpoints scaffolded; still need the platform dashboard configuration (client ID in Stripe dashboard, webhook endpoints registered in live + test modes).
 
 ---
 
@@ -171,10 +190,10 @@ These are close to real-world averages; shops will tune them. This is the same c
 
 All Phase 1 design docs complete. **Next phase: reconcile conflicts between docs, then scaffold code.**
 
-### Flagged for reconciliation
-- Design system recommends **Indigo accent #6366F1** (Candidate A) — confirm with Olly before locking.
-- Security doc is longer than planned (5,327 words vs 2,500–4,000 target) because of STRIDE tables; content quality is fine, leaving as-is.
-- Same-origin vs separate `embed.quick3dquote.com` subdomain — devops doc has a recommendation; cross-check against api-design's CORS policy before code.
+### Reconciliation notes (post-decision)
+- Indigo `#6366F1` accent — ✅ locked.
+- Separate `embed.quick3dquote.com` subdomain — ✅ locked. Two Next.js apps.
+- Direct-to-shop Stripe (OAuth, no Connect in v1) — ✅ locked.
 
 ---
 
@@ -192,12 +211,16 @@ All Phase 1 design docs complete. **Next phase: reconcile conflicts between docs
 
 ---
 
-## 11. Open questions to resolve with Olly (the owner)
+## 11. Decisions locked with Olly (2026-04-21)
 
-1. **Who holds the customer payment?** v1 assumption: money goes straight to the shop's Stripe account (we just charge them £50/mo). Alternative: we collect and payout (needs Stripe Connect, more complex, takes 1–2 extra weeks). **Current default: direct-to-shop.**
-2. **Trial?** 14-day free trial or straight to paid? **Current default: no trial in v1**, add later.
-3. **Brand/visual direction.** Placeholder: clean, technical, mid-century-engineering vibe. UI designer agent will propose.
-4. **File size cap.** Default 100MB upload. Might need to go higher for SLA dental-lab type users — revisit post-launch.
+1. ✅ **Accent colour: Indigo `#6366F1`** (Candidate A from design-system.md).
+2. ✅ **Embed runs on a separate subdomain: `embed.quick3dquote.com`**. Different origin from the dashboard. Implication: widget uses its own session-token cookie scoped to `embed.*`, dashboard cookie scoped to the apex. Cleaner CSP, stronger isolation. → Two separate Next.js apps: `apps/web` and `apps/embed`.
+3. ✅ **Payment flow v1: direct-to-shop Stripe.** We bill shops £50/mo. Customer money goes to the shop's own Stripe account. No Stripe Connect in v1. Shops connect their Stripe via OAuth and we get a restricted access token to create Checkout Sessions on their behalf. Defer platform-fee split to v1.1.
+
+## 11a. Still open (lower priority)
+
+- **Trial?** Currently no trial. Revisit once we've had 3+ shops ask for one.
+- **File size cap.** Default 100MB. Revisit if SLA/dental users need more.
 
 ---
 

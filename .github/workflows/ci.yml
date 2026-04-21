@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------- JS/TS workspaces (apps/web, apps/embed) ----------
+  js:
+    name: JS/TS — lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        env:
+          # Build-time public env vars — dummy values so Next.js compiles.
+          # Real values are injected by Vercel for deploys.
+          NEXT_PUBLIC_APP_URL: https://quick3dquote.com
+          NEXT_PUBLIC_EMBED_URL: https://embed.quick3dquote.com
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
+        run: pnpm run build
+
+  # ---------- Python quote-engine ----------
+  engine:
+    name: Python quote-engine — lint, typecheck, test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/quote-engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Ruff (lint + format check)
+        run: ruff check . && ruff format --check .
+
+      - name: Mypy (typecheck)
+        run: mypy app
+
+      - name: Pytest
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+
+  # ---------- Supabase SQL syntax check ----------
+  sql:
+    name: Supabase migrations — syntax check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply migrations to throwaway Postgres
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Ensure Supabase-compatible extensions exist
+          psql -h localhost -U postgres -d postgres -c "create extension if not exists pgcrypto;"
+          psql -h localhost -U postgres -d postgres -c "create extension if not exists citext;"
+          # Supabase adds an auth schema & auth.users table; fake a minimal one for syntax check
+          psql -h localhost -U postgres -d postgres -c "create schema if not exists auth; create table if not exists auth.users (id uuid primary key default gen_random_uuid());"
+          # Apply migrations in order
+          for f in supabase/migrations/*.sql; do
+            echo "=== Applying $f ==="
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
+          done

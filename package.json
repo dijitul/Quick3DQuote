@@ -1,0 +1,37 @@
+{
+  "name": "quick3dquote",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Instant 3D-printing quote widget — multi-tenant SaaS",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dijitul/Quick3DQuote.git"
+  },
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@q3dq/web",
+    "dev:embed": "turbo run dev --filter=@q3dq/embed",
+    "dev:engine": "cd services/quote-engine && uvicorn app.main:app --reload --port 8000",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:migrate": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:seed": "supabase db reset && supabase db seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8",
+    "typescript": "^5.6.3"
+  }
+}

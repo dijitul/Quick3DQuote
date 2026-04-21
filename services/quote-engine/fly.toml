@@ -1,0 +1,59 @@
+# Fly.io manifest for the quote-engine.
+# Region: LHR (London) — co-located with Supabase EU.
+# Sizing: shared-cpu-1x, 1GB RAM, min 1 / max 3 always-warm for low-latency quotes.
+# Secrets: `fly secrets set INTERNAL_KEY=... R2_ACCESS_KEY_ID=...` etc.
+
+app = "q3dq-engine"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  LOG_LEVEL = "info"
+  SENTRY_ENVIRONMENT = "production"
+  MAX_MESH_SIZE_MB = "100"
+  MAX_TRIANGLES = "10000000"
+  ANALYSIS_TIMEOUT_SECONDS = "15"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"     # warm for instant-quote UX
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 20
+    soft_limit = 15
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[metrics]
+  port = 9091
+  path = "/metrics"
+
+# Scaling ceiling
+[deploy]
+  strategy = "rolling"
+
+[[services]]
+  processes = ["app"]
+
+  [services.autoscaling]
+    min_machines = 1
+    max_machines = 3

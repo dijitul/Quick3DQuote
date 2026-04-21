@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Widget design-token layer.
+ *
+ * CSS variables mirror the Tailwind shadcn tokens; the shop's custom accent,
+ * if any, patches `--accent-*` at runtime via an inline <style> tag injected
+ * in page.tsx from the session response (design-system.md §8).
+ *
+ * All values are HSL triplets (`H S% L%`) so Tailwind's hsl(var(--x)) wrappers
+ * resolve correctly.
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%; /* neutral-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 239 84% 67%; /* accent-500 #6366F1 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%; /* neutral-50 */
+    --secondary-foreground: 215 25% 27%; /* neutral-700 */
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* neutral-500 */
+    --destructive: 0 72% 51%; /* error #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%; /* neutral-200 */
+    --input: 214 32% 91%;
+    --ring: 239 84% 67%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 222 47% 4%; /* neutral-950 */
+    --foreground: 210 40% 96%;
+    --card: 222 47% 11%; /* neutral-900 */
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%; /* neutral-800 */
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 239 84% 67%;
+  }
+}
+
+/*
+ * Embed reset.
+ *
+ * The iframe boundary already isolates us from host CSS, but we still see
+ * two failure modes in the wild:
+ *   1. Hosts injecting <style> into the iframe via old postMessage libs.
+ *   2. Our own Next.js default body margin leaking into the viewport.
+ *
+ * Scope: everything is painted under `.q3dq-root`. The root gets
+ * `isolation: isolate` and an explicit background so the widget is always
+ * legible on any host, and a hard `all: revert` fence at the iframe body
+ * level so anything above our root is neutralised. See design-system.md §7.
+ */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  /* Intentional — guard against any host-injected global overrides. */
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.q3dq-root {
+  all: revert;
+  isolation: isolate;
+  /* Re-apply the font after the all:revert. */
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
+  min-height: 100%;
+  container-type: inline-size;
+  container-name: q3dq;
+}
+
+/* Tabular numerics for all prices/dimensions. */
+.num-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Shimmer skeleton — respects reduced motion in layer below. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: hsl(var(--muted));
+}
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.35),
+    transparent
+  );
+  animation: shimmer 1.4s infinite linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+    display: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Focus ring, always visible for keyboard users. */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 4px;
+}

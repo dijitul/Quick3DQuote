@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { WidgetShell } from '@/components/widget-shell';
@@ -18,7 +19,10 @@ import { track } from '@/lib/telemetry';
  * the slight race by just showing a "We'll email you" message either way.
  */
 
-export default function SuccessPage() {
+// Reads ?qid= and ?key= on every visit — opt out of prerender.
+export const dynamic = 'force-dynamic';
+
+function SuccessSurface() {
   const search = useSearchParams();
   const quoteId = search.get('qid');
   const embedKey = search.get('key');
@@ -105,5 +109,13 @@ export default function SuccessPage() {
         </div>
       </WidgetShell>
     </div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <SuccessSurface />
+    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 
@@ -63,7 +64,10 @@ function mapQuoteResponse(q: QuoteResponse): QuoteResult {
   };
 }
 
-export default function WidgetPage() {
+// Widget reads ?key= on boot and is inherently dynamic — opt out of prerender.
+export const dynamic = 'force-dynamic';
+
+function WidgetSurface() {
   const search = useSearchParams();
   const embedKey = search.get('key');
 
@@ -435,4 +439,13 @@ function mapSessionError(err: ApiError): string {
     default:
       return err.message || 'We couldn\'t start a session with this shop.';
   }
+}
+
+export default function WidgetPage() {
+  // Suspense boundary required by Next 15 around any component using useSearchParams().
+  return (
+    <Suspense fallback={null}>
+      <WidgetSurface />
+    </Suspense>
+  );
 }

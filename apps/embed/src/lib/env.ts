@@ -48,11 +48,18 @@ const PublicEnvSchema = z.object({
 function parseServerEnv() {
   const parsed = ServerEnvSchema.safeParse(process.env);
   if (!parsed.success) {
-    // In dev we surface the missing vars; in prod we refuse to boot.
-    const issues = parsed.error.issues
-      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
-    throw new Error(`Invalid or missing env vars:\n${issues}`);
+    // First-deploy tolerance: log + return what we can. The proxy below
+    // returns the literal value (possibly undefined) at lookup time; the
+    // calling route will fail with a clearer message at use time than a
+    // module-load Error nobody can ground-truth.
+    if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[@q3dq/embed] Environment variables failed validation:',
+        parsed.error.flatten().fieldErrors,
+      );
+    }
+    return null;
   }
   return parsed.data;
 }
@@ -64,6 +71,13 @@ function parseServerEnv() {
 export const serverEnv = new Proxy({} as z.infer<typeof ServerEnvSchema>, {
   get(_target, key: string) {
     const env = parseServerEnv();
+    if (!env) {
+      // Build/inspection time without env: surface a clearer runtime error
+      // than a silent empty-string return that would later cascade weirdly.
+      throw new Error(
+        `[@q3dq/embed] Missing env var '${String(key)}'. Set it in Vercel project settings and redeploy.`,
+      );
+    }
     return env[key as keyof typeof env];
   },
 });

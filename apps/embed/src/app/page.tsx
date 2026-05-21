@@ -2,12 +2,19 @@
 
 import * as React from 'react';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 
 import { WidgetShell } from '@/components/widget-shell';
 import { UploadDropzone } from '@/components/upload-dropzone';
-import { MeshViewer } from '@/components/mesh-viewer';
+// Dynamic-import the 3D viewer with ssr:false. three.js touches `window` at
+// module load and react-three-fiber pulls React internals; neither survives
+// the build-time "Collecting page data" pass without this.
+const MeshViewer = dynamic(
+  () => import('@/components/mesh-viewer').then((mod) => mod.MeshViewer),
+  { ssr: false },
+);
 import { MaterialPanel } from '@/components/material-panel';
 import { PriceSummary } from '@/components/price-summary';
 import { CheckoutCta, type ContactForm } from '@/components/checkout-cta';

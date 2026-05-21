@@ -15,9 +15,11 @@
  */
 const nextConfig = {
   reactStrictMode: true,
-  // App Router + typed routes so our internal navigations are typed.
-  experimental: {
-    typedRoutes: true,
+  // typedRoutes is stable in Next 15.5+; moved out of experimental.
+  typedRoutes: true,
+  // Lint runs in CI via `pnpm lint` — don't block Vercel deploys on style nits.
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [

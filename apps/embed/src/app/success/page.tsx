@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { WidgetShell } from '@/components/widget-shell';
@@ -98,12 +99,12 @@ function SuccessSurface() {
                 Order reference:{' '}
                 <span className="num-tabular">{quote.id.slice(0, 8).toUpperCase()}</span>
               </div>
-              <a
+              <Link
                 href="/"
                 className="text-sm text-accent-600 hover:underline underline-offset-2"
               >
                 Upload another file
-              </a>
+              </Link>
             </>
           )}
         </div>

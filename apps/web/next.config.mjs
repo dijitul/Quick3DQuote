@@ -5,6 +5,10 @@ const nextConfig = {
   reactStrictMode: true,
   // typedRoutes is stable in Next 15.5+; was previously under experimental.
   typedRoutes: true,
+  // Lint runs in CI via `pnpm lint` — don't block Vercel deploys on style nits.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.r2.cloudflarestorage.com' },

@@ -8,8 +8,18 @@ import { env } from '@/lib/env';
  * from `src/middleware.ts`. We also apply simple redirect rules:
  *  - Unauthenticated users hitting /dashboard/* → /login
  *  - Authenticated users hitting /login or /signup → /dashboard
+ *
+ * Tolerant when env vars aren't configured yet — returns the request
+ * untouched so the marketing landing page still renders on a fresh deploy.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  // First-deploy tolerance: without Supabase env vars there's no session to
+  // refresh and no auth to enforce. Let everything through; routes that
+  // genuinely need auth will fail at their own usage point with a clear msg.
+  if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

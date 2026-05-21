@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "pnpm build",
-  "installCommand": "corepack enable && corepack prepare pnpm@9.12.0 --activate && pnpm install --no-frozen-lockfile",
+  "buildCommand": "npx -y pnpm@9.12.0 build",
+  "installCommand": "npx -y pnpm@9.12.0 install --no-frozen-lockfile",
   "outputDirectory": ".next",
   "regions": ["lhr1"],
   "github": {

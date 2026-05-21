@@ -89,7 +89,14 @@ export async function readEmbedSession(
   if (new Date(data.expires_at).getTime() < Date.now()) return null;
 
   // Cross-check: the embed_key on the request must belong to the session's shop.
-  const shop = data.shop as { embed_key: string } | null;
+  // Supabase's FK-join generic types this as an array, so go through `unknown`
+  // and handle the array-or-object shape.
+  const rawShop = data.shop as unknown;
+  const shop = (
+    Array.isArray(rawShop)
+      ? (rawShop[0] as { embed_key: string } | undefined)
+      : (rawShop as { embed_key: string } | null)
+  ) ?? null;
   if (!shop || shop.embed_key !== embedKey) return null;
 
   return { session_id: data.id, shop_id: data.shop_id };

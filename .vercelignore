@@ -1,8 +1,0 @@
-# Vercel only deploys the Next.js apps. Everything else is hosted elsewhere.
-services/
-supabase/
-docs/
-.github/
-.claude/
-*.md
-!apps/**/README.md

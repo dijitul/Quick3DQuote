@@ -1,0 +1,7 @@
+# Apps are independent Vercel projects. Vercel respects this file relative
+# to the Root Directory configured in the dashboard (apps/embed). This is
+# belt-and-braces — Root Directory should already scope everything.
+../../services
+../../supabase
+../../docs
+../../.github

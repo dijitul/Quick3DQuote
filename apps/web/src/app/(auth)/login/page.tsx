@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -28,7 +28,11 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export default function LoginPage() {
+// Login is inherently dynamic — query params for the post-login redirect, no SEO value.
+// Opt out of prerendering so Next 15's useSearchParams-Suspense requirement doesn't bite.
+export const dynamic = 'force-dynamic';
+
+function LoginForm() {
   const params = useSearchParams();
   const [loading, setLoading] = useState(false);
   const form = useForm<FormValues>({
@@ -105,5 +109,14 @@ export default function LoginPage() {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  // Suspense boundary required by Next 15 around any component using useSearchParams().
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

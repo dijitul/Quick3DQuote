@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+// Renamed to avoid collision with `export const dynamic = 'force-dynamic'` below.
+import nextDynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 
@@ -11,7 +12,7 @@ import { UploadDropzone } from '@/components/upload-dropzone';
 // Dynamic-import the 3D viewer with ssr:false. three.js touches `window` at
 // module load and react-three-fiber pulls React internals; neither survives
 // the build-time "Collecting page data" pass without this.
-const MeshViewer = dynamic(
+const MeshViewer = nextDynamic(
   () => import('@/components/mesh-viewer').then((mod) => mod.MeshViewer),
   { ssr: false },
 );

@@ -2,10 +2,19 @@ import { z } from 'zod';
 
 /**
  * Zod-validated environment variables.
- * Any code that imports `env` will throw at module load if the process is
- * mis-configured, which is what we want.
+ *
+ * Design note: we **don't throw** at module load even when required vars are
+ * missing. Build-time "Collecting page data" instantiates every route handler
+ * with whatever env happens to exist, so throwing here breaks deploys that
+ * just haven't been configured yet (a CI sanity build, the very first push to
+ * Vercel before secrets are added, etc.).
+ *
+ * Instead, vars that are truly required for an operation are validated where
+ * they're consumed: `createSupabaseServerClient()` will throw a clear error
+ * if `NEXT_PUBLIC_SUPABASE_URL` is empty, etc. That gives a useful runtime
+ * error on the first request after deploy without blocking the build.
  */
-const serverSchema = z.object({
+const schema = z.object({
   // Runtime
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -13,46 +22,52 @@ const serverSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   NEXT_PUBLIC_EMBED_URL: z.string().url().default('http://localhost:3001'),
 
-  // Supabase
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
+  // Supabase — required at runtime for auth-touching routes; permissive here.
+  NEXT_PUBLIC_SUPABASE_URL: z.string().default(''),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().default(''),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().default(''),
 
-  // Stripe
-  STRIPE_SECRET_KEY: z.string().min(1).optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
-  STRIPE_PRICE_ID_STARTER: z.string().min(1).optional(),
-  STRIPE_PRICE_ID_PRO: z.string().min(1).optional(),
-  STRIPE_PRICE_ID_SCALE: z.string().min(1).optional(),
-  STRIPE_CLIENT_ID: z.string().min(1).optional(),
+  // Stripe — optional, only required by billing + webhook routes.
+  STRIPE_SECRET_KEY: z.string().default(''),
+  STRIPE_WEBHOOK_SECRET: z.string().default(''),
+  STRIPE_PRICE_ID_STARTER: z.string().default(''),
+  STRIPE_PRICE_ID_PRO: z.string().default(''),
+  STRIPE_PRICE_ID_SCALE: z.string().default(''),
+  STRIPE_CLIENT_ID: z.string().default(''),
 
-  // Cloudflare R2
-  R2_ACCOUNT_ID: z.string().min(1).optional(),
-  R2_ACCESS_KEY_ID: z.string().min(1).optional(),
-  R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
-  R2_BUCKET_MESHES: z.string().min(1).default('q3dq-meshes'),
-  R2_PUBLIC_BASE_URL: z.string().url().optional(),
+  // Cloudflare R2 — only required by upload/download routes.
+  R2_ACCOUNT_ID: z.string().default(''),
+  R2_ACCESS_KEY_ID: z.string().default(''),
+  R2_SECRET_ACCESS_KEY: z.string().default(''),
+  R2_BUCKET_MESHES: z.string().default('q3dq-meshes'),
+  R2_PUBLIC_BASE_URL: z.string().default(''),
 
-  // Quote engine (internal service)
-  QUOTE_ENGINE_URL: z.string().url().optional(),
-  QUOTE_ENGINE_INTERNAL_KEY: z.string().min(1).optional(),
+  // Quote engine (internal service) — only required by pricing routes.
+  QUOTE_ENGINE_URL: z.string().default(''),
+  QUOTE_ENGINE_INTERNAL_KEY: z.string().default(''),
 });
 
-// On the browser `process.env` is populated only with NEXT_PUBLIC_* keys, so
-// we parse permissively client-side to avoid unnecessary build-time failures.
-const parsed =
-  typeof window === 'undefined'
-    ? serverSchema.safeParse(process.env)
-    : serverSchema.partial().safeParse(process.env);
+const parsed = schema.safeParse(process.env);
 
-if (!parsed.success && typeof window === 'undefined') {
+if (!parsed.success && typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
-  console.error(
-    '[@q3dq/web] Invalid environment variables:',
+  console.warn(
+    '[@q3dq/web] Environment variables failed validation:',
     parsed.error.flatten().fieldErrors,
   );
-  throw new Error('Invalid environment variables — see logs above.');
 }
 
-export const env = (parsed.success ? parsed.data : {}) as z.infer<typeof serverSchema>;
+export const env = (parsed.success ? parsed.data : schema.parse({})) as z.infer<typeof schema>;
 export type Env = typeof env;
+
+/** Throws if a required env var is missing. Call from the code path that needs it. */
+export function requireEnv<K extends keyof Env>(key: K): Exclude<Env[K], ''> {
+  const value = env[key];
+  if (!value || value === '') {
+    throw new Error(
+      `Missing required environment variable: ${String(key)}. ` +
+        `Set it in Vercel project settings (or .env.local for dev) and redeploy.`,
+    );
+  }
+  return value as Exclude<Env[K], ''>;
+}

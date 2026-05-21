@@ -23,10 +23,14 @@ export async function requireShopSession() {
     .eq('profile_id', user.id)
     .maybeSingle();
 
-  // `membership.shop` is the joined row. When a user has just signed up we
-  // haven't provisioned a shop yet — the onboarding DB trigger handles that,
-  // but in local dev we render a tolerant placeholder so routes still work.
-  const shop = (membership?.shop as Shop | null) ?? null;
+  // `membership.shop` is the joined row. Supabase's generic type infers this
+  // as an array for FK joins, so we go through `unknown` for the cast.
+  // When a user has just signed up we haven't provisioned a shop yet — the
+  // onboarding DB trigger handles that; null is a tolerable placeholder.
+  const rawShop = membership?.shop as unknown;
+  const shop =
+    (Array.isArray(rawShop) ? (rawShop[0] as Shop | undefined) : (rawShop as Shop | null)) ??
+    null;
 
   return { user, supabase, shop };
 }

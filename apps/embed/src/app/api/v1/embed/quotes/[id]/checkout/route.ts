@@ -33,7 +33,7 @@ const BodySchema = z
 let _stripe: Stripe | null = null;
 function stripe(): Stripe {
   if (!_stripe) {
-    _stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY, { apiVersion: '2024-09-30.acacia' });
+    _stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' });
   }
   return _stripe;
 }

@@ -14,8 +14,10 @@ export function getStripe(): Stripe {
   }
 
   if (!cached) {
+    // Pin to the API version the installed SDK ships with — the type is a
+    // string literal union, so it must match Stripe.LatestApiVersion exactly.
     cached = new Stripe(env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-09-30.acacia',
+      apiVersion: '2025-02-24.acacia',
       typescript: true,
       appInfo: {
         name: 'quick3dquote-web',
